@@ -47,7 +47,6 @@ find.imppoints_pt = function (x, tolerance_pt = 1) {
 }
 #'@export
 find.minima_maxima_pt = function(x, tolerance_pt, minima=TRUE) {
-    require(techchart)
     n <- NROW(x)
     y <- data.frame(rep(1,n),rep(0,n), rep(0,n))
     
