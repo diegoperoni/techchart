@@ -4,6 +4,74 @@
 #'@useDynLib techchart
 #'
 #'@export
+find.imppoints_pt = function (x, tolerance_pt = 1) {
+    z1 <- find.minima_maxima_pt(x, tolerance_pt, minima=TRUE) # min
+    z2 <- find.minima_maxima_pt(x, tolerance_pt, minima=FALSE) # max
+    z <- rbind(z1, z2)
+    z <- z[order(z$pos), ]
+    for (i in 1:5) {
+        if (!checkoptimapos(as.numeric(z$pos))) {
+            sign_x <- sortoptimaposition(as.numeric(z$pos), as.numeric(z$sign), 
+                                         as.numeric(z$value))
+            z$sign <- sign_x
+            z <- z[which(z$sign != 0), ]
+        }
+        if (!checkoptimasign(as.numeric(z$sign))) {
+            sign_x <- sortoptimasign(as.numeric(z$pos), as.numeric(z$sign), 
+                                     as.numeric(z$value))
+            z$sign <- sign_x
+            z <- z[which(z$sign != 0), ]
+        }
+    }
+    rownames(z) <- seq(1:NROW(z))
+    pts <- list()
+    pts$data <- x
+    if (xts::is.xts(x)) {
+        z <- xts::as.xts(z, zoo::index(x)[z$pos])
+        data <- data.frame(pos = z$pos[which(z$sign == 1)], value = z$value[which(z$sign == 1)])
+        maxima <- xts::as.xts(data, zoo::index(x)[z$pos[which(z$sign == 1)]])
+        data <- data.frame(pos = z$pos[which(z$sign == -1)], value = z$value[which(z$sign == -1)])
+        minima <- xts::as.xts(data, zoo::index(x)[z$pos[which(z$sign == -1)]])
+    }
+    else {
+        maxima <- data.frame(pos = z$pos[which(z$sign == 1)], 
+                             value = z$value[which(z$sign == 1)])
+        minima <- data.frame(pos = z$pos[which(z$sign == -1)], 
+                             value = z$value[which(z$sign == -1)])
+    }
+    pts$results <- z
+    pts$maxima <- maxima
+    pts$minima <- minima
+    class(pts) <- "imppoints"
+    return(pts)
+}
+#'@export
+find.minima_maxima_pt = function(x, tolerance_pt, minima=TRUE) {
+    require(techchart)
+    n <- NROW(x)
+    y <- data.frame(rep(1,n),rep(0,n), rep(0,n))
+    
+    threshold <- rep(tolerance_pt, NROW(x))
+    if(quantmod::is.OHLC(x)) {
+        x.min <- apply(merge(quantmod::Cl(x),quantmod::Op(x)),1,min)
+        x.max <- apply(merge(quantmod::Cl(x),quantmod::Op(x)),1,max)
+    } else
+        x.min <- x.max <- as.matrix(x)[,1]
+    
+    if (minima) {
+        y <- data.frame(techchart::findminima_pt(as.numeric(x.min),as.numeric(x.max),threshold))
+        output = x.min
+    } else {
+        y <- data.frame(techchart::findmaxima_pt(as.numeric(x.min),as.numeric(x.max),threshold))
+        output = x.max
+    }
+    y <- y[which(y[, 2]!=0), ]
+    colnames(y) <- c("pos", "sign")
+    y$pos <- y$pos+1
+    y$value <- as.numeric(output)[y$pos]
+    return(y)
+}
+#'@export
 print.imppoints <- function(x,...){
   print(x$results, ...)
 }
