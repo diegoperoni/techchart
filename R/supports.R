@@ -52,8 +52,10 @@ find.minima_maxima_pt = function(x, tolerance_pt, minima=TRUE) {
     
     threshold <- rep(tolerance_pt, NROW(x))
     if(quantmod::is.OHLC(x)) {
-        x.min <- apply(merge(quantmod::Cl(x),quantmod::Op(x)),1,min)
-        x.max <- apply(merge(quantmod::Cl(x),quantmod::Op(x)),1,max)
+        #x.min <- apply(merge(quantmod::Cl(x),quantmod::Op(x)),1,min)
+        #x.max <- apply(merge(quantmod::Cl(x),quantmod::Op(x)),1,max)
+        x.min <- quantmod::Lo(x) # uses low
+        x.max <- quantmod::Hi(x) # uses high
     } else
         x.min <- x.max <- as.matrix(x)[,1]
     
