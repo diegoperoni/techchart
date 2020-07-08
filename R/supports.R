@@ -54,10 +54,10 @@ find.minima_maxima_pt = function(x, tolerance_pt, minima=TRUE) {
     if(quantmod::is.OHLC(x)) {
         #x.min <- apply(merge(quantmod::Cl(x),quantmod::Op(x)),1,min)
         #x.max <- apply(merge(quantmod::Cl(x),quantmod::Op(x)),1,max)
-        x.min <- pmin(as.numeric(quantmod::Cl(x)), as.numeric(quantmod::Op(x)))
-        x.max <- pmax(as.numeric(quantmod::Cl(x)), as.numeric(quantmod::Op(x)))
-        #x.min <- quantmod::Lo(x) # uses low
-        #x.max <- quantmod::Hi(x) # uses high
+        #x.min <- pmin(as.numeric(quantmod::Cl(x)), as.numeric(quantmod::Op(x)))
+        #x.max <- pmax(as.numeric(quantmod::Cl(x)), as.numeric(quantmod::Op(x)))
+        x.min <- quantmod::Lo(x) # uses low
+        x.max <- quantmod::Hi(x) # uses high
     } else
         x.min <- x.max <- zoo::coredata(x)[,1] # molto piu veloce
         #x.min <- x.max <- as.matrix(x)[,1]
