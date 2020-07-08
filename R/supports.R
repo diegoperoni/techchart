@@ -57,7 +57,8 @@ find.minima_maxima_pt = function(x, tolerance_pt, minima=TRUE) {
         x.min <- quantmod::Lo(x) # uses low
         x.max <- quantmod::Hi(x) # uses high
     } else
-        x.min <- x.max <- as.matrix(x)[,1]
+        x.min <- x.max <- zoo::coredata(x)[,1] # molto piu veloce
+        #x.min <- x.max <- as.matrix(x)[,1]
     
     if (minima) {
         y <- data.frame(techchart::findminima_pt(as.numeric(x.min),as.numeric(x.max),threshold))
