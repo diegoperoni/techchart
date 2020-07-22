@@ -63,7 +63,7 @@ find.minima_maxima_pt = function(x, tolerance_pt, minima=TRUE) {
         x.max[x.exceed] <- quantmod::Cl(x)[x.exceed]
 
     } else
-        x.min <- x.max <- zoo::coredata(x)[,1] # molto piu veloce
+        x.min <- x.max <- zoo::coredata(x) # molto piu veloce
         #x.min <- x.max <- as.matrix(x)[,1]
     
     if (minima) {
