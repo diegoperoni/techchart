@@ -5,45 +5,78 @@
 #'
 #'@export
 find.imppoints_pt = function (x, tolerance_pt = 1) {
-    z1 <- find.minima_maxima_pt(x, tolerance_pt, minima=TRUE) # min
-    z2 <- find.minima_maxima_pt(x, tolerance_pt, minima=FALSE) # max
-    z <- rbind(z1, z2)
-    z <- z[order(z$pos), ]
-    for (i in 1:5) {
-        if (!checkoptimapos(as.numeric(z$pos))) {
-            sign_x <- sortoptimaposition(as.numeric(z$pos), as.numeric(z$sign), 
-                                         as.numeric(z$value))
-            z$sign <- sign_x
-            z <- z[which(z$sign != 0), ]
-        }
-        if (!checkoptimasign(as.numeric(z$sign))) {
-            sign_x <- sortoptimasign(as.numeric(z$pos), as.numeric(z$sign), 
-                                     as.numeric(z$value))
-            z$sign <- sign_x
-            z <- z[which(z$sign != 0), ]
-        }
+  z1 <- find.minima_maxima_pt(x, tolerance_pt, minima=TRUE) # min
+  z2 <- find.minima_maxima_pt(x, tolerance_pt, minima=FALSE) # max
+  z <- rbind(z1, z2)
+  z <- z[order(z$pos), ]
+  for (i in 1:5) {
+    if (!checkoptimapos(as.numeric(z$pos))) {
+      sign_x <- sortoptimaposition(as.numeric(z$pos), as.numeric(z$sign), 
+                                   as.numeric(z$value))
+      z$sign <- sign_x
+      z <- z[which(z$sign != 0), ]
     }
+    if (!checkoptimasign(as.numeric(z$sign))) {
+      sign_x <- sortoptimasign(as.numeric(z$pos), as.numeric(z$sign), 
+                               as.numeric(z$value))
+      z$sign <- sign_x
+      z <- z[which(z$sign != 0), ]
+    }
+  }
+  if (NROW(z)>0) {
     rownames(z) <- seq(1:NROW(z))
     pts <- list()
     pts$data <- x
+    
+    #se ha trovato un minimo (massimo) allora il massimo (minimo) è max (min) alla sinistra
+    subset = x[1:z[1, ]$pos]
+    if (z[1, ]$sign==-1) {
+      if (quantmod::is.OHLC(subset))
+        subset = as.numeric(quantmod::Hi(subset))
+      z = rbind(data.frame(pos=which.max(subset), sign=1, value=max(subset)), z)
+    } else {
+      if (quantmod::is.OHLC(subset))
+        subset = as.numeric(quantmod::Lo(subset))
+      z = rbind(data.frame(pos=which.min(subset), sign=-1, value=min(subset)), z)
+    }
+  
+    # se ha trovato un minimo (massimo) e il abs delta massimo (minimo) 
+    # successivo > threshold allora il massimo (minimo) è max (min) alla destra
+    subset = x[z[NROW(z), ]$pos:NROW(x)]
+    if (z[NROW(z), ]$sign==-1) {
+      if (quantmod::is.OHLC(subset))
+        subset = as.numeric(quantmod::Hi(subset))
+      if (abs(z[NROW(z), ]$value - max(subset)) > tolerance_pt)
+        z = rbind(z, data.frame(pos=(z[NROW(z), ]$pos+which.max(subset)-1), sign=1, value=max(subset)))
+    } else {
+      if (quantmod::is.OHLC(subset))
+        subset = as.numeric(quantmod::Lo(subset))
+      if (abs(z[NROW(z), ]$value - min(subset)) > tolerance_pt)
+        z = rbind(z, data.frame(pos=(z[NROW(z), ]$pos+which.min(subset)-1), sign=-1, value=min(subset)))
+    }
+    
     if (xts::is.xts(x)) {
-        z <- xts::as.xts(z, zoo::index(x)[z$pos])
-        data <- data.frame(pos = z$pos[which(z$sign == 1)], value = z$value[which(z$sign == 1)])
-        maxima <- xts::as.xts(data, zoo::index(x)[z$pos[which(z$sign == 1)]])
-        data <- data.frame(pos = z$pos[which(z$sign == -1)], value = z$value[which(z$sign == -1)])
-        minima <- xts::as.xts(data, zoo::index(x)[z$pos[which(z$sign == -1)]])
+      z <- xts::as.xts(z, zoo::index(x)[z$pos])
+      data <- data.frame(pos = z$pos[which(z$sign == 1)], value = z$value[which(z$sign == 1)])
+      maxima <- xts::as.xts(data, zoo::index(x)[z$pos[which(z$sign == 1)]])
+      data <- data.frame(pos = z$pos[which(z$sign == -1)], value = z$value[which(z$sign == -1)])
+      minima <- xts::as.xts(data, zoo::index(x)[z$pos[which(z$sign == -1)]])
     }
     else {
-        maxima <- data.frame(pos = z$pos[which(z$sign == 1)], 
-                             value = z$value[which(z$sign == 1)])
-        minima <- data.frame(pos = z$pos[which(z$sign == -1)], 
-                             value = z$value[which(z$sign == -1)])
+      maxima <- data.frame(pos = z$pos[which(z$sign == 1)], 
+                           value = z$value[which(z$sign == 1)])
+      minima <- data.frame(pos = z$pos[which(z$sign == -1)], 
+                           value = z$value[which(z$sign == -1)])
     }
     pts$results <- z
     pts$maxima <- maxima
     pts$minima <- minima
     class(pts) <- "imppoints"
-    return(pts)
+    
+  } else
+    pts = NA
+  
+  return(pts)
 }
 #'@export
 find.minima_maxima_pt = function(x, tolerance_pt, minima=TRUE) {
