@@ -45,3 +45,6 @@ checkoptimapos <- function(pos) {
     .Call('_techchart_checkoptimapos', PACKAGE = 'techchart', pos)
 }
 
+ma <- function(x, k, weighting) {
+    .Call('_techchart_ma', PACKAGE = 'techchart', x, k, weighting)
+}
