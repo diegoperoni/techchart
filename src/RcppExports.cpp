@@ -148,6 +148,20 @@ BEGIN_RCPP
 END_RCPP
 }
 
+// ma
+Rcpp::NumericVector ma(NumericVector x, int k, String weighting);
+RcppExport SEXP _techchart_ma(SEXP xSEXP, SEXP kSEXP, SEXP weightingSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< int >::type k(kSEXP);
+    Rcpp::traits::input_parameter< String >::type weighting(weightingSEXP);
+    rcpp_result_gen = Rcpp::wrap(ma(x, k, weighting));
+    return rcpp_result_gen;
+END_RCPP
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"_techchart_cpt_trend", (DL_FUNC) &_techchart_cpt_trend, 5},
     {"_techchart_houghtransform", (DL_FUNC) &_techchart_houghtransform, 6},
@@ -160,6 +174,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_techchart_sortoptimasign", (DL_FUNC) &_techchart_sortoptimasign, 3},
     {"_techchart_checkoptimasign", (DL_FUNC) &_techchart_checkoptimasign, 1},
     {"_techchart_checkoptimapos", (DL_FUNC) &_techchart_checkoptimapos, 1},
+    {"_techchart_ma", (DL_FUNC) &_techchart_ma, 3},
     {NULL, NULL, 0}
 };
 
