@@ -41,6 +41,7 @@ export(findminima_pt) # DIEGO
 export(find.imppoints_pt) # DIEGO
 export(find.minima_maxima_pt) # DIEGO
 export(na_ma) # DIEGO (from imputeTS)
+export(adaptiveEMA) # DIEGO
 export(pattern.db)
 importFrom(Rcpp,evalCpp)
 importFrom(grDevices,adjustcolor)
