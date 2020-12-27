@@ -48,3 +48,7 @@ checkoptimapos <- function(pos) {
 ma <- function(x, k, weighting) {
     .Call('_techchart_ma', PACKAGE = 'techchart', x, k, weighting)
 }
+
+adaptiveEMA <- function(x, k, weighting) {
+    .Call('_techchart_adaptiveEMA', PACKAGE = 'techchart', prices, alpha)
+}
