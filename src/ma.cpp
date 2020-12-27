@@ -90,6 +90,7 @@ Rcpp::NumericVector ma(NumericVector x, int k, String weighting) {
 // [[Rcpp::export]]
 Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alpha) {
     
+    int i;
     Rcpp::NumericVector out = clone(prices);
     int n = out.size();
     
