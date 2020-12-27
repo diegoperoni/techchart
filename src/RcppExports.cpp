@@ -162,6 +162,19 @@ BEGIN_RCPP
 END_RCPP
 }
 
+// adaptiveEMA
+Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alpha);
+RcppExport SEXP _techchart_adaptiveEMA(SEXP xSEXP, SEXP aSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type prices(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type alpha(aSEXP);
+    rcpp_result_gen = Rcpp::wrap(adaptiveEMA(prices, alpha));
+    return rcpp_result_gen;
+END_RCPP
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {"_techchart_cpt_trend", (DL_FUNC) &_techchart_cpt_trend, 5},
     {"_techchart_houghtransform", (DL_FUNC) &_techchart_houghtransform, 6},
