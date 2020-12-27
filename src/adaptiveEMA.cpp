@@ -2,7 +2,7 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alpha) {
+Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alphas) {
     
     int i;
     Rcpp::NumericVector out = clone(prices);
@@ -15,7 +15,7 @@ Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alpha) {
     
     /* Loop over non-NA input values */
     for(i = 1; i < n; i++) {
-        out[i] = prices[i] * alpha[i] + out[i-1] * (1 - alpha[i]);
+        out[i] = prices[i] * alphas[i] + out[i-1] * (1 - alphas[i]);
     }
     
     return out;
