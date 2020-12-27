@@ -49,6 +49,6 @@ ma <- function(x, k, weighting) {
     .Call('_techchart_ma', PACKAGE = 'techchart', x, k, weighting)
 }
 
-adaptiveEMA <- function(prices, alpha) {
-    .Call('_techchart_adaptiveEMA', PACKAGE = 'techchart', prices, alpha)
+adaptiveEMA <- function(prices, alphas) {
+    .Call('_techchart_adaptiveEMA', PACKAGE = 'techchart', prices, alphas)
 }
