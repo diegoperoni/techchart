@@ -9,8 +9,8 @@ Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alpha) {
     int n = out.size();
     
     /* Set leading NAs in output */
-    for(i = 0; i < n; i++) {
-      out[i] = 0;
+    for(i = 1; i < n; i++) {
+      out[i] = NA_REAL;
     }
     
     /* Loop over non-NA input values */
