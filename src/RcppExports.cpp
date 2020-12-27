@@ -188,6 +188,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_techchart_checkoptimasign", (DL_FUNC) &_techchart_checkoptimasign, 1},
     {"_techchart_checkoptimapos", (DL_FUNC) &_techchart_checkoptimapos, 1},
     {"_techchart_ma", (DL_FUNC) &_techchart_ma, 3},
+    {"_techchart_adaptiveEMA", (DL_FUNC) &_techchart_adaptiveEMA, 2},
     {NULL, NULL, 0}
 };
 
