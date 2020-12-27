@@ -163,14 +163,14 @@ END_RCPP
 }
 
 // adaptiveEMA
-Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alpha);
+Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alphas);
 RcppExport SEXP _techchart_adaptiveEMA(SEXP xSEXP, SEXP aSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericVector >::type prices(xSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type alpha(aSEXP);
-    rcpp_result_gen = Rcpp::wrap(adaptiveEMA(prices, alpha));
+    Rcpp::traits::input_parameter< NumericVector >::type alphas(aSEXP);
+    rcpp_result_gen = Rcpp::wrap(adaptiveEMA(prices, alphas));
     return rcpp_result_gen;
 END_RCPP
 }
