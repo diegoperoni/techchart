@@ -101,7 +101,7 @@ Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alpha) {
     
     /* Loop over non-NA input values */
     for(i = 1; i < n; i++) {
-        out[i] = prices[i] * alpha[i] + out[i-1] * (1 - alpha[i])
+        out[i] = prices[i] * alpha[i] + out[i-1] * (1 - alpha[i]);
     }
     
     return out;
