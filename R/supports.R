@@ -80,11 +80,11 @@ find.imppoints_pt = function (x, tolerance_pt = 1) {
 }
 
 #'@export
-find.imppoints_perc = function (x, tolerance_perc = 0.01) {
+find.imppoints_perc = function (x, tolerance_perc = 0.01, true.close.colname="true.close") {
   
-  if ("true.close" %in% colnames(x)) {
-    x$truecl = x$true.close
-    x$true.close = NULL
+  if (true.close.colname %in% colnames(x)) {
+    x$truecl = x[, true.close.colname]
+    x = x[, !colnames(x) %in% true.close.colname]
   } else
     x$truecl = x$close
   
