@@ -23,6 +23,7 @@ find.imppoints_pt = function (x, tolerance_pt = 1) {
       z <- z[which(z$sign != 0), ]
     }
   }
+  pts = NULL
   if (NROW(z)>0) {
     rownames(z) <- seq(1:NROW(z))
     pts <- list()
@@ -72,9 +73,7 @@ find.imppoints_pt = function (x, tolerance_pt = 1) {
     pts$maxima <- maxima
     pts$minima <- minima
     class(pts) <- "imppoints"
-    
-  } else
-    pts = NA
+  }
   
   return(pts)
 }
@@ -106,6 +105,7 @@ find.imppoints_perc = function (x, tolerance_perc = 0.01, true.close.colname="tr
       z <- z[which(z$sign != 0), ]
     }
   }
+  pts = NULL
   if (NROW(z)>0) {
     rownames(z) <- seq(1:NROW(z))
     pts <- list()
@@ -156,9 +156,7 @@ find.imppoints_perc = function (x, tolerance_perc = 0.01, true.close.colname="tr
     pts$maxima <- maxima
     pts$minima <- minima
     class(pts) <- "imppoints"
-    
-  } else
-    pts = NA
+  }
   
   return(pts)
 }
