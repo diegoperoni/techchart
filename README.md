@@ -8,7 +8,7 @@ You can install from github with:
 
 ```R
 # install.packages("devtools")
-devtools::install_github("prodipta/techchart")
+devtools::install_github("diegperoni/techchart")
 # this includes some codes in C++, and hence will require RTools (windows) or Xcode (Mac) and compilers/ libraries for building from source
 ```
 ## Example
