@@ -14,3 +14,4 @@ devtools::install_github("prodipta/techchart")
 ## Example
 
 Please see the package [vignette](vignettes/techchart.md) for detailed explanation and examples of the functionalities. Alternatively refer to [my blog](http://prodiptag.blogspot.com/2016/10/systematic-trading-r-package-for.html) for a discussion.
+add line
