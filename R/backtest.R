@@ -7,13 +7,14 @@
 #' @param point_value 
 #' @param size 
 #' @param trade_comm 
+#' @param slippage.ticks
 #' @param verbose
 #'
 #' @return
 #' @export
 #'
 #' @examples
-backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, verbose=FALSE) {
+backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, slippage_ticks=1, verbose=FALSE) {
   
   start = Sys.time()
   
@@ -36,21 +37,21 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   out$Exit.Tape = dplyr::lead(out$Exit.Tape) # pull back info exit
   out = na.omit(out)
   
-  # calculate commissions and spread
+  # calculate commissions and splippage
   out$Size = size
-  out$Commissions = 2 * out$Size * -trade_comm
-  out$Spread = 0 
-  out$Spread[out$Exit.Tape == 'EXIT.MKT'] = - (tick_size * point_value * out$Size)
-  out$Spread[out$Enter.Tape == 'ENTER.MKT'] = out$Spread[out$Enter.Tape == 'ENTER.MKT'] - (tick_size * point_value * out$Size)
+  out$Commissions = - 2 * out$Size * trade_comm
+  out$Slippage = 0 
+  out$Slippage[out$Exit.Tape=='EXIT.MKT'] = - (slippage_ticks * tick_size * point_value * out$Size)
+  out$Slippage[out$Enter.Tape=='ENTER.MKT'] = out$Slippage[out$Enter.Tape=='ENTER.MKT'] - (slippage_ticks * tick_size * point_value * out$Size)
   
   # calculate gross profit
   if (orderside_long)
-    out$Net.PL = (out$Exit.Price - out$Enter.Price) * (out$Size * point_value)
+    out$Net.PL = (out$Exit.Price - out$Enter.Price) * out$Size * point_value
   else
-    out$Net.PL = - (out$Exit.Price - out$Enter.Price) * (out$Size * point_value)
+    out$Net.PL = - (out$Exit.Price - out$Enter.Price) * out$Size * point_value
   
   # calculate net profit and net value
-  out$Net.PL = out$Net.PL + out$Commissions + out$Spread
+  out$Net.PL = out$Net.PL + out$Commissions + out$Slippage
   out$Net.Value = out$True.Price * (out$Size * point_value)
 
   processing_time = paste0('(', round(difftime(Sys.time(), start, units='secs'), 1), ' secs)')
