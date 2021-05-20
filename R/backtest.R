@@ -7,14 +7,14 @@
 #' @param point_value 
 #' @param size 
 #' @param trade_comm 
-#' @param slippage.ticks
+#' @param mkt_slippage_ticks
 #' @param verbose
 #'
 #' @return
 #' @export
 #'
 #' @examples
-backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, slippage_ticks=1, verbose=FALSE) {
+backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, mkt_slippage_ticks=1, verbose=FALSE) {
   
   start = Sys.time()
   
@@ -41,8 +41,8 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   out$Size = size
   out$Commissions = - 2 * out$Size * trade_comm
   out$Slippage = 0 
-  out$Slippage[out$Exit.Tape=='EXIT.MKT'] = - (slippage_ticks * tick_size * point_value * out$Size)
-  out$Slippage[out$Enter.Tape=='ENTER.MKT'] = out$Slippage[out$Enter.Tape=='ENTER.MKT'] - (slippage_ticks * tick_size * point_value * out$Size)
+  out$Slippage[out$Exit.Tape=='EXIT.MKT'] = - (mkt_slippage_ticks * tick_size * point_value * out$Size)
+  out$Slippage[out$Enter.Tape=='ENTER.MKT'] = out$Slippage[out$Enter.Tape=='ENTER.MKT'] - (mkt_slippage_ticks * tick_size * point_value * out$Size)
   
   # calculate gross profit
   if (orderside_long)
@@ -58,7 +58,7 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   if (verbose)
     print(paste("backtest...", processing_time))
   
-  out %>% dplyr::select(Start=Enter.Date, End=Exit.Date, Enter.Price, Exit.Price, Enter.Tape, Exit.Tape, Size, Commissions, Net.PL, Net.Value)
+  out %>% dplyr::select(Start=Enter.Date, End=Exit.Date, Enter.Price, Exit.Price, Enter.Tape, Exit.Tape, Size, Commissions, Slippage, Net.PL, Net.Value)
 }
 
 
@@ -71,26 +71,27 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
 #'   
 #' @param data data.frame
 #' @param params 
+#' @param enter_mkt
 #' @param verbose
 #'
 #' @return data.frame
 #' @export
 #'
 #' @examples
-bias2signals = function(data=NULL, params=NULL, verbose=FALSE) {
+bias2signals = function(data=NULL, params=NULL, enter_mkt=FALSE, verbose=FALSE) {
   start = Sys.time()
   enter = data %>%
-    dplyr::filter(year %in% params$years, month %in% params$months, mday %in% params$mdays,
-                  bday %in% params$bdays, wday %in% params$wdays, hhmm == dplyr::first(params$hhmms)) %>%
-    dplyr::mutate(enter=dplyr::if_else(dplyr::first(unique(data$hhmm)) == dplyr::first(params$hhmms), 2, 1), exit=NA) %>% # entrata segnale settata a 1 (entrata LMT) se condizione FALSE, altrimenti 2 se TRUE (Gap)
+    dplyr::filter(year %in% !!params$years, month %in% !!params$months, mday %in% !!params$mdays,
+                  bday %in% !!params$bdays, wday %in% !!params$wdays, hhmm == dplyr::first(!!params$hhmms)) %>%
+    dplyr::mutate(enter=dplyr::if_else(!!enter_mkt || dplyr::first(unique(hhmm)) == dplyr::first(!!params$hhmms), 2, 1), exit=NA) %>% # entrata segnale settata a 1 (entrata LMT) se condizione FALSE, altrimenti 2 se TRUE (Gap)
     dplyr::select(date, enter, exit) 
   exit = data %>%
-    dplyr::filter(year %in% params$years, month %in% params$months, mday %in% params$mdays,
-                  bday %in% params$bdays, wday %in% params$wdays, hhmm == dplyr::last(params$hhmms)) %>%
+    dplyr::filter(year %in% !!params$years, month %in% !!params$months, mday %in% !!params$mdays,
+                  bday %in% !!params$bdays, wday %in% !!params$wdays, hhmm == dplyr::last(!!params$hhmms)) %>%
     dplyr::mutate(exit=-2, enter=NA) %>% # uscita segnale settata a -2 (in quanto uscita MKT)
     dplyr::select(date, enter, exit) 
   
-  out = dplyr::left_join(data, rbind(enter, exit)) %>%
+  out = dplyr::left_join(data, rbind(enter, exit), by='date') %>%
     dplyr::select(date, open, high, low, close, true.close, enter, exit)
   out$enter = dplyr::lead(out$enter, n=1)
   out %<>% tidyr::replace_na(list(enter=0, exit=0)) %>%
@@ -141,7 +142,7 @@ asset4Backtest = function(asset=NULL, delta_shift_hours=0, fix.TS.bias=FALSE, ve
   if (symbol$ticker %in% c('ES', 'NQ', 'RTY', 'YM'))
     hhmm = setdiff(hhmm, c('22:16', '22:17', '22:18', '22:19', '22:20', '22:21', '22:22', '22:23', '22:24', '22:25', '22:26', '22:27', '22:28', '22:29'))
   combinations = expand.grid(hhmm, unique(asset$day)) %>% setNames(c('hhmm', 'day'))
-  asset = dplyr::left_join(combinations, asset) %>% 
+  asset = dplyr::left_join(combinations, asset, by=c('hhmm', 'day')) %>% 
     tidyr::fill(dplyr::everything(), .direction='downup') %>% dplyr::select(hhmm, day, open, high, low, close, true.close)
   pos = lubridate::ymd_hm(paste(asset$day, asset$hhmm), tz='UTC') # sempre UTC!!!
   data = xts::xts(asset[, 3:ncol(asset)], pos)
