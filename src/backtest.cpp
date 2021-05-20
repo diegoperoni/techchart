@@ -12,57 +12,62 @@ using namespace Rcpp;
 //
 
 // [[Rcpp::export]]
-Rcpp::DataFrame bias_cpp(Rcpp::DataFrame data, bool orderside_long, int max_mins_wait) {
+Rcpp::DataFrame backtest_cpp(Rcpp::DataFrame data, bool orderside_long, int max_mins_wait) {
   
   Rcpp::DataFrame out = Rcpp::clone(data);
   
   // input
-  Rcpp::IntegerVector enter = data["actions"];
+  Rcpp::IntegerVector  enter = data["actions"];
   Rcpp::NumericVector  close = data["close"];
   Rcpp::NumericVector  low = data["low"];
   Rcpp::NumericVector  high = data["high"];
   Rcpp::DatetimeVector date = data["date"];
+  Rcpp::NumericVector  true_close = data["true.close"];
   
   // output
-  Rcpp::NumericVector EnterPrice = data["Enter.Price"];
+  Rcpp::NumericVector   EnterPrice = data["Enter.Price"];
   Rcpp::CharacterVector EnterDate = data["Enter.Date"];
-  Rcpp::NumericVector ExitPrice = data["Exit.Price"];
+  Rcpp::NumericVector   ExitPrice = data["Exit.Price"];
   Rcpp::CharacterVector ExitDate = data["Exit.Date"];
   Rcpp::CharacterVector EnterTape = data["Enter.Tape"];
   Rcpp::CharacterVector ExitTape = data["Exit.Tape"];
+  Rcpp::NumericVector   TruePrice = data["True.Price"];
   
   int pos = 0;
   int placeholder_time_wait = 0;
   double lmt_price = 0;
   
-  for(int i=0; i<data.nrow(); i++){
-    if(pos == 0){
-      // entry
-      if(enter[i] == 1){
+  for (int i=0; i<data.nrow(); i++) {
+    if (pos == 0) {
+      if (enter[i] == 1) { // entrata LMT
         lmt_price = close[i];
         placeholder_time_wait = max_mins_wait;
-      } else if(enter[i] == 2){ //entrata a MKT
+        
+      } else if (enter[i] == 2) { //entrata a MKT
         EnterPrice[i] = close[i];
         EnterDate[i] = date[i];
         EnterTape[i] = "ENTER.MKT";
+        TruePrice[i] = true_close[i];
         pos = 1;
         placeholder_time_wait = 0;
+        
       } else {
-        // find potential entry to lmt_price
-        if(placeholder_time_wait>0){
-          if(orderside_long){
-            if(low[i] < lmt_price){
+        if (placeholder_time_wait>0) { // find potential entry to lmt_price
+          if (orderside_long) {
+            if (low[i] < lmt_price) {
               EnterPrice[i] = lmt_price;
               EnterDate[i] = date[i];
               EnterTape[i] = "ENTER.LMT";
+              TruePrice[i] = true_close[i];
               pos = 1;
               placeholder_time_wait = 0;
             }
           } else {
-            if(high[i] > lmt_price){
+            if (high[i] > lmt_price) {
               EnterPrice[i] = lmt_price;
               EnterDate[i] = date[i];
               EnterTape[i] = "ENTER.LMT";
+              TruePrice[i] = true_close[i];
               pos = 1;
               placeholder_time_wait = 0;
             }
@@ -70,9 +75,9 @@ Rcpp::DataFrame bias_cpp(Rcpp::DataFrame data, bool orderside_long, int max_mins
         }
         placeholder_time_wait--;
       }
+      
     } else { // pos != 0
-      // exit
-      if(enter[i] == -2){
+      if (enter[i] == -2) { // exit
         ExitPrice[i] = close[i];
         ExitDate[i] = date[i];
         ExitTape[i] = "EXIT.MKT";
@@ -87,6 +92,7 @@ Rcpp::DataFrame bias_cpp(Rcpp::DataFrame data, bool orderside_long, int max_mins
   out["Exit.Date"] = ExitDate;
   out["Enter.Tape"] = EnterTape;
   out["Exit.Tape"] = ExitTape;
+  out["True.Price"] = TruePrice;
   
   return out;
 }

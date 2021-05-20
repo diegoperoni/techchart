@@ -7,12 +7,15 @@
 #' @param point_value 
 #' @param size 
 #' @param trade_comm 
+#' @param verbose
 #'
 #' @return
 #' @export
 #'
 #' @examples
-backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA) {
+backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, verbose=FALSE) {
+  
+  start = Sys.time()
   
   # create column needed
   data$Enter.Price = NA
@@ -21,9 +24,9 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   data$Exit.Date = NA
   data$Enter.Tape = NA
   data$Exit.Tape = NA
+  data$True.Price = NA
   
-  # get backtest from cpp function
-  out = bias_cpp(data = data, max_mins_wait = max_mins_wait, orderside_long = orderside_long)
+  out = backtest_cpp(data=data, max_mins_wait=max_mins_wait, orderside_long=orderside_long)
   
   # align entry and exit
   out = out[!is.na(out$Enter.Tape) | !is.na(out$Exit.Tape), ]
@@ -37,25 +40,24 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   out$Size = size
   out$Commissions = 2 * out$Size * -trade_comm
   out$Spread = 0 
-  out$Spread[out$Exit.Tape == 'EXIT.MKT'] = -(tick_size * point_value * out$Size)
+  out$Spread[out$Exit.Tape == 'EXIT.MKT'] = - (tick_size * point_value * out$Size)
   out$Spread[out$Enter.Tape == 'ENTER.MKT'] = out$Spread[out$Enter.Tape == 'ENTER.MKT'] - (tick_size * point_value * out$Size)
   
   # calculate gross profit
-  if (orderside_long){
+  if (orderside_long)
     out$Net.PL = (out$Exit.Price - out$Enter.Price) * (out$Size * point_value)
-  } else {
-    out$Net.PL = -(out$Exit.Price - out$Enter.Price) * (out$Size * point_value)
-  }
+  else
+    out$Net.PL = - (out$Exit.Price - out$Enter.Price) * (out$Size * point_value)
   
-  # calculate net profit
+  # calculate net profit and net value
   out$Net.PL = out$Net.PL + out$Commissions + out$Spread
+  out$Net.Value = out$True.Price * (out$Size * point_value)
+
+  processing_time = paste0('(', round(difftime(Sys.time(), start, units='secs'), 1), ' secs)')
+  if (verbose)
+    print(paste("backtest...", processing_time))
   
-  # sort output
-  out %<>% dplyr::rename(Start = Enter.Date, End = Exit.Date) %>%
-    dplyr::select(Start, End, Enter.Price, Exit.Price, Enter.Tape, Exit.Tape,
-                  Size, Commissions, Net.PL)
-  
-  return(out)
+  out %>% dplyr::select(Start=Enter.Date, End=Exit.Date, Enter.Price, Exit.Price, Enter.Tape, Exit.Tape, Size, Commissions, Net.PL, Net.Value)
 }
 
 
@@ -68,12 +70,14 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
 #'   
 #' @param data data.frame
 #' @param params 
+#' @param verbose
 #'
 #' @return data.frame
 #' @export
 #'
 #' @examples
-bias2signals = function(data=NULL, params=NULL) {
+bias2signals = function(data=NULL, params=NULL, verbose=FALSE) {
+  start = Sys.time()
   enter = data %>%
     dplyr::filter(year %in% params$years, month %in% params$months, mday %in% params$mdays,
                   bday %in% params$bdays, wday %in% params$wdays, hhmm == dplyr::first(params$hhmms)) %>%
@@ -86,11 +90,11 @@ bias2signals = function(data=NULL, params=NULL) {
     dplyr::select(date, enter, exit) 
   
   out = dplyr::left_join(data, rbind(enter, exit)) %>%
-    dplyr::select(date, open, high, low, close, enter, exit)
+    dplyr::select(date, open, high, low, close, true.close, enter, exit)
   out$enter = dplyr::lead(out$enter, n=1)
   out %<>% tidyr::replace_na(list(enter=0, exit=0)) %>%
     dplyr::mutate(actions=enter+exit) %>%
-    dplyr::select(date, open, high, low, close, actions)
+    dplyr::select(date, open, high, low, close, true.close, actions)
   
   if (dplyr::first(out$actions[out$actions != 0]) %in% c(-1, -2))
     out$actions[which(out$actions %in% c(-1, -2))[1]] = 0
@@ -102,8 +106,64 @@ bias2signals = function(data=NULL, params=NULL) {
   values[values<0] = -1
   check = sum(values) == 0
   
+  processing_time = paste0('(', round(difftime(Sys.time(), start, units='secs'), 1), ' secs)')
+  if (verbose)
+    print(paste("bias2signals...", processing_time))
+  
   if (check)
     return (out)
   else
     return (NULL)
+}
+
+#' Prepare asset xts for backtest C++
+#'
+#' @param asset xts
+#' @param delta_shift_hours 
+#' @param fix.TS.bias 
+#' @verbose
+#'
+#' @return data.frame
+#' @export
+#'
+#' @examples
+asset4Backtest = function(asset=NULL, delta_shift_hours=0, fix.TS.bias=FALSE, verbose=FALSE) {
+  start = Sys.time()
+  if (fix.TS.bias)
+    asset = xts::shift.time(asset, n=60*(-1)) 
+  asset = asset[, c('open', 'high', 'low', 'close', 'true.close')]
+  asset = xts::shift.time(asset, n=60*60*delta_shift_hours)
+  asset = data.frame(zoo::coredata(asset), date=zoo::index(asset))
+  asset$day = format(asset$date, '%Y-%m-%d')
+  asset$hhmm = format(asset$date, '%H:%M')
+  hhmm = sort(unique(asset$hhmm))
+  if (symbol$ticker %in% c('ES', 'NQ', 'RTY', 'YM'))
+    hhmm = setdiff(hhmm, c('22:16', '22:17', '22:18', '22:19', '22:20', '22:21', '22:22', '22:23', '22:24', '22:25', '22:26', '22:27', '22:28', '22:29'))
+  combinations = expand.grid(hhmm, unique(asset$day)) %>% setNames(c('hhmm', 'day'))
+  asset = dplyr::left_join(combinations, asset) %>% 
+    tidyr::fill(dplyr::everything(), .direction='downup') %>% dplyr::select(hhmm, day, open, high, low, close, true.close)
+  pos = lubridate::ymd_hm(paste(asset$day, asset$hhmm), tz='UTC') # sempre UTC!!!
+  data = xts::xts(asset[, 3:ncol(asset)], pos)
+  data$year  = xts::.indexyear(data) + 1900
+  data$month = xts::.indexmon(data)
+  data$mday  = xts::.indexmday(data)
+  data$wday  = xts::.indexwday(data)
+  data = data.frame(zoo::coredata(data), date=stats::time(data))
+  data$day = asset$day
+  data$hhmm = asset$hhmm
+  bdays = data %>% dplyr::group_by(year, month, mday) %>% dplyr::filter(dplyr::row_number()==1) %>% dplyr::ungroup() %>%
+    dplyr::group_by(year, month) %>% dplyr::mutate(bday=dplyr::row_number()) %>% dplyr::ungroup() %>% dplyr::select(day, bday)
+  data %<>% dplyr::left_join(bdays[, c('day', 'bday')], by='day') %>% 
+    dplyr::mutate(year=as.integer(year), month=as.integer(month), mday=as.integer(mday), wday=as.integer(wday), bday=as.integer(bday))
+  if (min(data$low, na.rm=TRUE)<=0) {
+    delta_2_zero = abs(min(data$low, na.rm=TRUE)) * 2
+    print(paste('WARNING: Negative Values found on Adjusted Data: adjusting values to Reach All Positives Values...'))
+    data %<>% dplyr::mutate(open = open + !!delta_2_zero, high = high + !!delta_2_zero, low = low + !!delta_2_zero, close = close + !!delta_2_zero)
+  }
+  
+  processing_time = paste0('(', round(difftime(Sys.time(), start, units='secs'), 1), ' secs)')
+  if (verbose)
+    print(paste("asset4Backtest...", processing_time))
+  
+  data
 }

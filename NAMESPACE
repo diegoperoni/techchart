@@ -46,6 +46,7 @@ export(na_ma) # DIEGO (from imputeTS)
 export(adaptiveEMA) # DIEGO
 export(backtest) # DIEGO
 export(bias2signals) # DIEGO
+export(asset4Backtest) # DIEGO
 export(pattern.db)
 importFrom(Rcpp,evalCpp)
 importFrom(grDevices,adjustcolor)
