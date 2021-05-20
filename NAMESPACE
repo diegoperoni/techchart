@@ -44,6 +44,8 @@ export(find.imppoints_perc) # DIEGO
 export(find.minima_maxima_perc) # DIEGO
 export(na_ma) # DIEGO (from imputeTS)
 export(adaptiveEMA) # DIEGO
+export(backtest) # DIEGO
+export(bias2signals) # DIEGO
 export(pattern.db)
 importFrom(Rcpp,evalCpp)
 importFrom(grDevices,adjustcolor)

@@ -5,6 +5,10 @@ adaptiveEMA <- function(prices, alphas) {
     .Call('_techchart_adaptiveEMA', PACKAGE = 'techchart', prices, alphas)
 }
 
+bias_cpp <- function(data, orderside_long, max_mins_wait) {
+    .Call('_techchart_bias_cpp', PACKAGE = 'techchart', data, orderside_long, max_mins_wait)
+}
+
 cpt_trend <- function(x, y, Q, minseglen, penalty) {
     .Call('_techchart_cpt_trend', PACKAGE = 'techchart', x, y, Q, minseglen, penalty)
 }

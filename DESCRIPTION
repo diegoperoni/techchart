@@ -10,7 +10,7 @@ License: file LICENSE
 LazyData: TRUE
 Depends: R (>= 2.10), stats
 Imports:
-    Rcpp (>= 0.12.6), Hmisc, xts, zoo, quantmod, TTR
+    Rcpp (>= 0.12.6), Hmisc, xts, zoo, quantmod, TTR, dplyr, tidyr, lubridate
 LinkingTo: Rcpp
 RoxygenNote: 5.0.1
 Suggests: knitr,
