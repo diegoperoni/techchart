@@ -19,7 +19,6 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   
   start = Sys.time()
   
-  # create column needed
   data$Enter.Price = NA
   data$Enter.Date = NA
   data$Exit.Price = NA
@@ -32,13 +31,13 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   
   # align entry and exit
   out = out[!is.na(out$Enter.Tape) | !is.na(out$Exit.Tape), ]
-  out$Enter.Date = as.POSIXct(as.integer(out$Enter.Date), origin="1970-01-01") # convert entry
+  out$Enter.Date = as.POSIXct(as.integer(out$Enter.Date), tz='UTC', origin='1970-01-01') # convert entry
   out$Enter.Date = lubridate::force_tz(out$Enter.Date, tzone=tz)
-  out$Exit.Date = dplyr::lead(as.POSIXct(as.integer(out$Exit.Date), origin="1970-01-01")) # convert exit and pull back
+  out$Exit.Date = dplyr::lead(as.POSIXct(as.integer(out$Exit.Date), tz='UTC', origin='1970-01-01')) # convert exit and pull back
   out$Exit.Date = lubridate::force_tz(out$Exit.Date, tzone=tz)
   out$Exit.Price = dplyr::lead(out$Exit.Price) # pull back info exit
   out$Exit.Tape = dplyr::lead(out$Exit.Tape) # pull back info exit
-  out = na.omit(out)
+  out = tibble::as_tibble(stats::na.omit(out)) # evita se vuoto poi vada in errore
   
   # calculate commissions and splippage
   out$Size = size
@@ -59,7 +58,7 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
 
   processing_time = paste0('(', round(difftime(Sys.time(), start, units='secs'), 1), ' secs)')
   if (verbose)
-    print(paste("backtest...", processing_time))
+    print(paste('backtest...', processing_time, ' N.Trades', nrow(out), ' Net.PL', sum(out$Net.PL)))
   
   out %>% dplyr::select(Start=Enter.Date, End=Exit.Date, Enter.Price, Exit.Price, Enter.Tape, Exit.Tape, Size, Commissions, Slippage, Net.PL, Net.Value)
 }
@@ -83,10 +82,11 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
 #' @examples
 bias2signals = function(data=NULL, params=NULL, enter_mkt=FALSE, verbose=FALSE) {
   start = Sys.time()
+  signal_at_first_hhmm = dplyr::first(unique(data$hhmm)) == dplyr::first(params$hhmms) # force ENTER.MKT signal
   enter = data %>%
     dplyr::filter(year %in% !!params$years, month %in% !!params$months, mday %in% !!params$mdays,
                   bday %in% !!params$bdays, wday %in% !!params$wdays, hhmm == dplyr::first(!!params$hhmms)) %>%
-    dplyr::mutate(enter=dplyr::if_else(!!enter_mkt || dplyr::first(unique(hhmm)) == dplyr::first(!!params$hhmms), 2, 1), exit=NA) %>% # entrata segnale settata a 1 (entrata LMT) se condizione FALSE, altrimenti 2 se TRUE (Gap)
+    dplyr::mutate(enter = if (!!enter_mkt || !!signal_at_first_hhmm) 2 else 1, exit=NA) %>% # entrata segnale settata a 1 (entrata LMT) se condizione FALSE, altrimenti 2 se TRUE (Gap)
     dplyr::select(date, enter, exit) 
   exit = data %>%
     dplyr::filter(year %in% !!params$years, month %in% !!params$months, mday %in% !!params$mdays,
@@ -124,6 +124,7 @@ bias2signals = function(data=NULL, params=NULL, enter_mkt=FALSE, verbose=FALSE) 
 #' Prepare asset xts for backtest C++
 #'
 #' @param asset xts
+#' @param ticker
 #' @param delta_shift_hours 
 #' @param fix.TS.bias 
 #' @verbose
@@ -132,7 +133,7 @@ bias2signals = function(data=NULL, params=NULL, enter_mkt=FALSE, verbose=FALSE) 
 #' @export
 #'
 #' @examples
-asset4Backtest = function(asset=NULL, delta_shift_hours=0, fix.TS.bias=FALSE, verbose=FALSE) {
+asset4Backtest = function(asset=NULL, ticker=NULL, delta_shift_hours=0, fix.TS.bias=FALSE, verbose=FALSE) {
   start = Sys.time()
   if (fix.TS.bias)
     asset = xts::shift.time(asset, n=60*(-1)) 
@@ -142,11 +143,12 @@ asset4Backtest = function(asset=NULL, delta_shift_hours=0, fix.TS.bias=FALSE, ve
   asset$day = format(asset$date, '%Y-%m-%d')
   asset$hhmm = format(asset$date, '%H:%M')
   hhmm = sort(unique(asset$hhmm))
-  if (symbol$ticker %in% c('ES', 'NQ', 'RTY', 'YM'))
+  if (ticker %in% c('ES', 'NQ', 'RTY', 'YM'))
     hhmm = setdiff(hhmm, c('22:16', '22:17', '22:18', '22:19', '22:20', '22:21', '22:22', '22:23', '22:24', '22:25', '22:26', '22:27', '22:28', '22:29'))
   combinations = expand.grid(hhmm, unique(asset$day)) %>% setNames(c('hhmm', 'day'))
   asset = dplyr::left_join(combinations, asset, by=c('hhmm', 'day')) %>% 
-    tidyr::fill(dplyr::everything(), .direction='downup') %>% dplyr::select(hhmm, day, open, high, low, close, true.close)
+    tidyr::fill(dplyr::everything(), .direction='downup') %>% 
+    dplyr::select(hhmm, day, open, high, low, close, true.close)
   pos = lubridate::ymd_hm(paste(asset$day, asset$hhmm), tz='UTC') # sempre UTC!!!
   data = xts::xts(asset[, 3:ncol(asset)], pos)
   data$year  = xts::.indexyear(data) + 1900
