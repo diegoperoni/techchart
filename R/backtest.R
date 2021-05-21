@@ -8,13 +8,14 @@
 #' @param size 
 #' @param trade_comm 
 #' @param mkt_slippage_ticks
+#' @param tz default UTC
 #' @param verbose
 #'
 #' @return
 #' @export
 #'
 #' @examples
-backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, mkt_slippage_ticks=1, verbose=FALSE) {
+backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, mkt_slippage_ticks=1, tz='UTC', verbose=FALSE) {
   
   start = Sys.time()
   
@@ -32,7 +33,9 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   # align entry and exit
   out = out[!is.na(out$Enter.Tape) | !is.na(out$Exit.Tape), ]
   out$Enter.Date = as.POSIXct(as.integer(out$Enter.Date), origin="1970-01-01") # convert entry
+  out$Enter.Date = lubridate::force_tz(out$Enter.Date, tzone=tz)
   out$Exit.Date = dplyr::lead(as.POSIXct(as.integer(out$Exit.Date), origin="1970-01-01")) # convert exit and pull back
+  out$Exit.Date = lubridate::force_tz(out$Exit.Date, tzone=tz)
   out$Exit.Price = dplyr::lead(out$Exit.Price) # pull back info exit
   out$Exit.Tape = dplyr::lead(out$Exit.Tape) # pull back info exit
   out = na.omit(out)
