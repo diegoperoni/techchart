@@ -8,14 +8,14 @@
 #' @param size 
 #' @param trade_comm 
 #' @param mkt_slippage_ticks
-#' @param tz default UTC
+#' @param delta_shift_hours
 #' @param verbose
 #'
 #' @return
 #' @export
 #'
 #' @examples
-backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, mkt_slippage_ticks=1, tz='UTC', verbose=FALSE) {
+backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA, point_value=NA, size=1, trade_comm=NA, mkt_slippage_ticks=1, delta_shift_hours=0, verbose=FALSE) {
   
   start = Sys.time()
   
@@ -31,10 +31,11 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   
   # align entry and exit
   out = out[!is.na(out$Enter.Tape) | !is.na(out$Exit.Tape), ]
-  out$Enter.Date = as.POSIXct(as.integer(out$Enter.Date), tz='UTC', origin='1970-01-01') # convert entry
-  out$Enter.Date = lubridate::force_tz(out$Enter.Date, tzone=tz)
-  out$Exit.Date = dplyr::lead(as.POSIXct(as.integer(out$Exit.Date), tz='UTC', origin='1970-01-01')) # convert exit and pull back
-  out$Exit.Date = lubridate::force_tz(out$Exit.Date, tzone=tz)
+
+  exchange_tz = lubridate::tz(data$date) # il tz e' sempre quello di exchange ma orario e' virtualmente shiftato in avanti
+  out$Enter.Date = as.POSIXct((as.integer(out$Enter.Date) - 60*60*delta_shift_hours), tz=exchange_tz, origin='1970-01-01') # convert entry
+  out$Exit.Date = dplyr::lead(as.POSIXct((as.integer(out$Exit.Date) - 60*60*delta_shift_hours), tz=exchange_tz, origin='1970-01-01')) # convert exit and pull back
+  
   out$Exit.Price = dplyr::lead(out$Exit.Price) # pull back info exit
   out$Exit.Tape = dplyr::lead(out$Exit.Tape) # pull back info exit
   out = tibble::as_tibble(stats::na.omit(out)) # evita se vuoto poi vada in errore
@@ -62,7 +63,6 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
   
   out %>% dplyr::select(Start=Enter.Date, End=Exit.Date, Enter.Price, Exit.Price, Enter.Tape, Exit.Tape, Size, Commissions, Slippage, Net.PL, Net.Value)
 }
-
 
 #' Riceve data.frame fillato con tutti i minuti mancanti:
 #' date, open, high, low, close, year, month, mday, wday, day, hhmm, bday
@@ -139,6 +139,7 @@ asset4Backtest = function(asset=NULL, ticker=NULL, delta_shift_hours=0, fix.TS.b
     asset = xts::shift.time(asset, n=60*(-1)) 
   asset = asset[, c('open', 'high', 'low', 'close', 'true.close')]
   asset = xts::shift.time(asset, n=60*60*delta_shift_hours)
+  exchange_tz = lubridate::tz(zoo::index(asset))
   asset = data.frame(zoo::coredata(asset), date=zoo::index(asset))
   asset$day = format(asset$date, '%Y-%m-%d')
   asset$hhmm = format(asset$date, '%H:%M')
@@ -149,7 +150,10 @@ asset4Backtest = function(asset=NULL, ticker=NULL, delta_shift_hours=0, fix.TS.b
   asset = dplyr::left_join(combinations, asset, by=c('hhmm', 'day')) %>% 
     tidyr::fill(dplyr::everything(), .direction='downup') %>% 
     dplyr::select(hhmm, day, open, high, low, close, true.close)
-  pos = lubridate::ymd_hm(paste(asset$day, asset$hhmm), tz='UTC') # sempre UTC!!!
+  
+  #pos = lubridate::ymd_hm(paste(asset$day, asset$hhmm), tz='UTC') # sempre UTC!!!
+  pos = lubridate::ymd_hm(paste(asset$day, asset$hhmm), tz=exchange_tz) # DEVO RIPRISTINARE IL TZONE ORIGINALE ANCHE SE SHIFTATO IN AVANTI
+  
   data = xts::xts(asset[, 3:ncol(asset)], pos)
   data$year  = xts::.indexyear(data) + 1900
   data$month = xts::.indexmon(data)
