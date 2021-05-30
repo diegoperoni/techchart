@@ -162,8 +162,10 @@ asset4Backtest = function(asset=NULL, ticker=NULL, delta_shift_hours=0, fix.TS.b
   data = data.frame(zoo::coredata(data), date=stats::time(data))
   data$day = asset$day
   data$hhmm = asset$hhmm
-  bdays = data %>% dplyr::group_by(year, month, mday) %>% dplyr::filter(dplyr::row_number()==1) %>% dplyr::ungroup() %>%
-    dplyr::group_by(year, month) %>% dplyr::mutate(bday=dplyr::row_number()) %>% dplyr::ungroup() %>% dplyr::select(day, bday)
+  # bdays = data %>% dplyr::group_by(year, month, mday) %>% dplyr::filter(dplyr::row_number()==1) %>% dplyr::ungroup() %>%
+  #   dplyr::group_by(year, month) %>% dplyr::mutate(bday=dplyr::row_number()) %>% dplyr::ungroup() %>% dplyr::select(day, bday)
+  bdays = quantF::calculateBusinessDays(dplyr::last(data$date)) %>%
+    dplyr::mutate(day=format(date, '%Y-%m-%d')) %>% dplyr::select(-date)
   data %<>% dplyr::left_join(bdays[, c('day', 'bday')], by='day') %>% 
     dplyr::mutate(year=as.integer(year), month=as.integer(month), mday=as.integer(mday), wday=as.integer(wday), bday=as.integer(bday))
   if (min(data$low, na.rm=TRUE)<=0) {
