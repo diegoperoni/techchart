@@ -82,12 +82,22 @@ backtest = function(data=NULL, max_mins_wait=3, orderside_long=NA, tick_size=NA,
 #' @examples
 bias2signals = function(data=NULL, params=NULL, enter_mkt=FALSE, verbose=FALSE) {
   start = Sys.time()
-  signal_at_first_hhmm = dplyr::first(unique(data$hhmm)) == dplyr::first(params$hhmms) # force ENTER.MKT signal
+  
+  lead_enter_bars = 1
+  #signal_at_first_hhmm = dplyr::first(unique(data$hhmm)) == dplyr::first(params$hhmms) # force ENTER.MKT signal (session_tz)
+  signal_at_first_hhmm = params$hhmms_exchange_tz[1] == params$hhmms_range[1] # force ENTER.MKT signal (exchange_tz)
+
+  if (signal_at_first_hhmm && !params$hhmm_prev_day=='') { # ho indicato un orario di ingresso del giorno prima
+    lead_enter_bars = abs(match(params$hhmm_prev_day, params$hhmms_exchange_tz) - length(params$hhmms_exchange_tz)) + 2 # tutto in exchange_tz
+    signal_at_first_hhmm = FALSE
+  }
+  
   enter = data %>%
     dplyr::filter(year %in% !!params$years, month %in% !!params$months, mday %in% !!params$mdays,
                   bday %in% !!params$bdays, wday %in% !!params$wdays, hhmm == dplyr::first(!!params$hhmms)) %>%
     dplyr::mutate(enter = if (!!enter_mkt || !!signal_at_first_hhmm) 2 else 1, exit=NA) %>% # entrata segnale settata a 1 (entrata LMT) se condizione FALSE, altrimenti 2 se TRUE (Gap)
-    dplyr::select(date, enter, exit) 
+    dplyr::select(date, enter, exit)
+  
   exit = data %>%
     dplyr::filter(year %in% !!params$years, month %in% !!params$months, mday %in% !!params$mdays,
                   bday %in% !!params$bdays, wday %in% !!params$wdays, hhmm == dplyr::last(!!params$hhmms)) %>%
@@ -96,7 +106,9 @@ bias2signals = function(data=NULL, params=NULL, enter_mkt=FALSE, verbose=FALSE) 
   
   out = dplyr::left_join(data, rbind(enter, exit), by='date') %>%
     dplyr::select(date, open, high, low, close, true.close, enter, exit)
-  out$enter = dplyr::lead(out$enter, n=1)
+  
+  out$enter = dplyr::lead(out$enter, n=lead_enter_bars) # shitfo minimo 1 minuto (o piu con hhmms_exchange_tz) indietro l'ingresso
+
   out %<>% tidyr::replace_na(list(enter=0, exit=0)) %>%
     dplyr::mutate(actions=enter+exit) %>%
     dplyr::select(date, open, high, low, close, true.close, actions)

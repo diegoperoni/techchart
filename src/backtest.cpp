@@ -34,14 +34,14 @@ Rcpp::DataFrame backtest_cpp(Rcpp::DataFrame data, bool orderside_long, int max_
   Rcpp::NumericVector   TruePrice = data["True.Price"];
   
   int pos = 0;
-  int placeholder_time_wait = 0;
+  int order_valid_to_time = 0;
   double lmt_price = 0;
   
   for (int i=0; i<data.nrow(); i++) {
     if (pos == 0) {
       if (enter[i] == 1) { // entrata LMT
         lmt_price = close[i];
-        placeholder_time_wait = max_mins_wait;
+        order_valid_to_time = date[i] + (60*max_mins_wait) + 1;
         
       } else if (enter[i] == 2) { //entrata a MKT
         EnterPrice[i] = close[i];
@@ -49,10 +49,10 @@ Rcpp::DataFrame backtest_cpp(Rcpp::DataFrame data, bool orderside_long, int max_
         EnterTape[i] = "ENTER.MKT";
         TruePrice[i] = true_close[i];
         pos = 1;
-        placeholder_time_wait = 0;
+        order_valid_to_time = 0;
         
       } else {
-        if (placeholder_time_wait>0) { // find potential entry to lmt_price
+        if (order_valid_to_time>date[i]) { // find potential entry to lmt_price
           if (orderside_long) {
             if (low[i] < lmt_price) {
               EnterPrice[i] = lmt_price;
@@ -60,7 +60,7 @@ Rcpp::DataFrame backtest_cpp(Rcpp::DataFrame data, bool orderside_long, int max_
               EnterTape[i] = "ENTER.LMT";
               TruePrice[i] = true_close[i];
               pos = 1;
-              placeholder_time_wait = 0;
+              order_valid_to_time = 0;
             }
           } else {
             if (high[i] > lmt_price) {
@@ -69,11 +69,11 @@ Rcpp::DataFrame backtest_cpp(Rcpp::DataFrame data, bool orderside_long, int max_
               EnterTape[i] = "ENTER.LMT";
               TruePrice[i] = true_close[i];
               pos = 1;
-              placeholder_time_wait = 0;
+              order_valid_to_time = 0;
             }
           }
-        }
-        placeholder_time_wait--;
+        } else
+          order_valid_to_time = 0;
       }
       
     } else { // pos != 0
