@@ -84,13 +84,17 @@ bias2signals = function(data=NULL, params=NULL, enter_mkt=FALSE, verbose=FALSE) 
   start = Sys.time()
   
   lead_enter_bars = 1
-  #signal_at_first_hhmm = dplyr::first(unique(data$hhmm)) == dplyr::first(params$hhmms) # force ENTER.MKT signal (session_tz)
-  signal_at_first_hhmm = params$hhmms_exchange_tz[1] == params$hhmms_range[1] # force ENTER.MKT signal (exchange_tz)
+  lag_exit_bars = 0
 
-  if (signal_at_first_hhmm && !params$hhmm_prev_day=='') { # ho indicato un orario di ingresso del giorno prima
-    lead_enter_bars = abs(match(params$hhmm_prev_day, params$hhmms_exchange_tz) - length(params$hhmms_exchange_tz)) + 2 # tutto in exchange_tz
+  signal_at_first_hhmm = params$hhmms_exchange_tz[1] == params$hhmms_range[1] # force ENTER.MKT signal (exchange_tz)
+  signal_at_last_hhmm  = dplyr::last(params$hhmms_exchange_tz) == params$hhmms_range[2] # exchange_tz
+
+  if (signal_at_first_hhmm && !params$hhmm_prev_session=='') { # ho indicato un orario di ingresso della sessione precedente
+    lead_enter_bars = abs(match(params$hhmm_prev_session, params$hhmms_exchange_tz) - length(params$hhmms_exchange_tz)) + 2 # tutto in exchange_tz
     signal_at_first_hhmm = FALSE
   }
+  if (signal_at_last_hhmm && !params$hhmm_next_session=='') # ho indicato un orario di ingresso della sessione successiva
+    lag_exit_bars = abs(match(params$hhmm_next_session, params$hhmms_exchange_tz)) # exchange_tz
   
   enter = data %>%
     dplyr::filter(year %in% !!params$years, month %in% !!params$months, mday %in% !!params$mdays,
@@ -107,7 +111,9 @@ bias2signals = function(data=NULL, params=NULL, enter_mkt=FALSE, verbose=FALSE) 
   out = dplyr::left_join(data, rbind(enter, exit), by='date') %>%
     dplyr::select(date, open, high, low, close, true.close, enter, exit)
   
-  out$enter = dplyr::lead(out$enter, n=lead_enter_bars) # shitfo minimo 1 minuto (o piu con hhmms_exchange_tz) indietro l'ingresso
+  out$enter = dplyr::lead(out$enter, n=lead_enter_bars) # shitfo sempre indietro minimo 1 minuto l'ingresso
+  if (lag_exit_bars>0)
+    out$exit = dplyr::lag(out$exit, n=lag_exit_bars) # shitfo avanti minimo 0 minuti l'uscita
 
   out %<>% tidyr::replace_na(list(enter=0, exit=0)) %>%
     dplyr::mutate(actions=enter+exit) %>%
@@ -163,7 +169,6 @@ asset4Backtest = function(asset=NULL, ticker=NULL, delta_shift_hours=0, fix.TS.b
     tidyr::fill(dplyr::everything(), .direction='downup') %>% 
     dplyr::select(hhmm, day, open, high, low, close, true.close)
   
-  #pos = lubridate::ymd_hm(paste(asset$day, asset$hhmm), tz='UTC') # sempre UTC!!!
   pos = lubridate::ymd_hm(paste(asset$day, asset$hhmm), tz=exchange_tz) # DEVO RIPRISTINARE IL TZONE ORIGINALE ANCHE SE SHIFTATO IN AVANTI
   
   data = xts::xts(asset[, 3:ncol(asset)], pos)
