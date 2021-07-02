@@ -5,31 +5,6 @@
 
 using namespace Rcpp;
 
-// adaptiveEMA
-Rcpp::NumericVector adaptiveEMA(NumericVector prices, NumericVector alphas);
-RcppExport SEXP _techchart_adaptiveEMA(SEXP pricesSEXP, SEXP alphasSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type prices(pricesSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type alphas(alphasSEXP);
-    rcpp_result_gen = Rcpp::wrap(adaptiveEMA(prices, alphas));
-    return rcpp_result_gen;
-END_RCPP
-}
-// backtest_cpp
-Rcpp::DataFrame backtest_cpp(Rcpp::DataFrame data, bool orderside_long, int max_mins_wait);
-RcppExport SEXP _techchart_backtest_cpp(SEXP dataSEXP, SEXP orderside_longSEXP, SEXP max_mins_waitSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< Rcpp::DataFrame >::type data(dataSEXP);
-    Rcpp::traits::input_parameter< bool >::type orderside_long(orderside_longSEXP);
-    Rcpp::traits::input_parameter< int >::type max_mins_wait(max_mins_waitSEXP);
-    rcpp_result_gen = Rcpp::wrap(backtest_cpp(data, orderside_long, max_mins_wait));
-    return rcpp_result_gen;
-END_RCPP
-}
 // cpt_trend
 IntegerVector cpt_trend(NumericVector x, NumericVector y, int Q, long minseglen, double penalty);
 RcppExport SEXP _techchart_cpt_trend(SEXP xSEXP, SEXP ySEXP, SEXP QSEXP, SEXP minseglenSEXP, SEXP penaltySEXP) {
@@ -187,8 +162,6 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_techchart_adaptiveEMA", (DL_FUNC) &_techchart_adaptiveEMA, 2},
-    {"_techchart_backtest_cpp", (DL_FUNC) &_techchart_backtest_cpp, 3},
     {"_techchart_cpt_trend", (DL_FUNC) &_techchart_cpt_trend, 5},
     {"_techchart_houghtransform", (DL_FUNC) &_techchart_houghtransform, 6},
     {"_techchart_ma", (DL_FUNC) &_techchart_ma, 3},
